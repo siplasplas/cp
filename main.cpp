@@ -14,11 +14,25 @@ string CP936 = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WINDOWS/CP936.
 string CP936Best = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WindowsBestFit/bestfit936.txt";
 string CP1361Best = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WindowsBestFit/bestfit1361.txt";
 
-string trimRight(const string &str) {
+string trimLeft(const string& str)
+{
+    const auto strBegin = str.find_first_not_of(" \t");
+    if (strBegin == string::npos)
+        return ""; // no content
+    return str.substr(strBegin, str.length() - strBegin);
+}
+
+
+string trimRight(const string& str)
+{
     const auto strEnd = str.find_last_not_of(" \t\r");
     if (strEnd == string::npos)
         return ""; // no content
     return str.substr(0, strEnd + 1);
+}
+
+string trim(const string& str) {
+    return trimLeft(trimRight(str));
 }
 
 template<typename I>
@@ -37,7 +51,9 @@ std::string str_tolower(std::string s) {
     return s;
 }
 
+int counter = 0;
 bool readTwo(const string &line, int &a, int &b) {
+    counter++;
     int pos1 = line.find('\t');
     if (pos1 < 0)
         pos1 = line.find("  ");
@@ -46,19 +62,20 @@ bool readTwo(const string &line, int &a, int &b) {
     string s1 = line.substr(0, pos1);
     size_t idx;
     a = stoi(s1, &idx, 16);
-    int pos2 = line.find('\t', pos1 + 1);
-    string s2;
     int pos2start = pos1 + 1;
+    int pos2 = line.find('\t', pos2start);
+    string s2;
     if (pos2 < 0) {
-        pos2 = line.find("  ", pos1 + 1);
-        pos2start++;
+        pos2 = line.find("  ", pos2start);
+        //pos2start++;
     }
     if (pos2 < 0) {
         pos2 = line.length();
-        pos2start--;
+    //    pos2start--;
     }
     s2 = line.substr(pos2start, pos2 - pos2start);
-    if (s2.empty() || s2[0] == ' ') {
+    s2 = trim(s2);
+    if (s2.empty()) {
         int pos3 = line.find('\t', pos2 + 1);
         string s3 = line.substr(pos2 + 1, pos3 - pos2 - 1);
         if (s3 == "#DBCS LEAD BYTE") {
@@ -74,10 +91,11 @@ bool readTwo(const string &line, int &a, int &b) {
 }
 
 void readMBtable(ifstream &infile, int mbSize, uint16_t tab[], uint16_t *dbcsroot[]) {
-    for (int i = 0; i < 128; i++) {
+    for (int i = 0; i < 128; i++)
         tab[i] = 0xfffd;
-        dbcsroot[i] = nullptr;
-    }
+    if (dbcsroot)
+        for (int i = 0; i < 128; i++)
+            dbcsroot[i] = nullptr;
     int i = 0;
     for (string line; getline(infile, line);) {
         line = trimRight(line);
@@ -164,9 +182,9 @@ void processFile12(const string &filename) {
     readDBCStables(infile, dbcsroot);
 }
 
-void processBest(const string &filename) {
+void processBest(const filesystem::path &path, ofstream &outStream) {
     uint16_t tab[128];
-    ifstream infile(filename);
+    ifstream infile(path);
     int mbSize = 0;
     for (string line; getline(infile, line);) {
         line = trimRight(line);
@@ -212,12 +230,14 @@ void processBest(const string &filename) {
                 bestv.emplace_back(make_pair(b, a));
         }
     }
+    string name = "cp" + path.stem().string().substr(7);
+    printTab(tab, outStream, name);
 }
 
-void processBest12(const string &filename) {
+void processBest12(const filesystem::path &path, ofstream &outStream) {
     uint16_t tab[128];
     uint16_t *dbcsroot[128];
-    ifstream infile(filename);
+    ifstream infile(path);
     int mbSize = 0;
     for (string line; getline(infile, line);) {
         line = trimRight(line);
@@ -238,8 +258,14 @@ void processBest12(const string &filename) {
         line = trimRight(line);
         if (!line.empty()) break;
     }
-    if (line.find("DBCSRANGE  ") != 0) throw runtime_error("no DBCSRANGE");
-    int rangeCount = stoi(line.substr(11));
+    int rangeCount;
+    if (line.find("DBCSRANGE  ") == 0)
+        rangeCount = stoi(line.substr(11));
+    else if (line.find("DBCSRANGE\t") == 0)
+        rangeCount = stoi(line.substr(10));
+    else
+        throw runtime_error("no DBCSRANGE");
+
     for (int range = 0; range < rangeCount; range++) {
         getline(infile, line);
         getline(infile, line);
@@ -278,6 +304,8 @@ void processBest12(const string &filename) {
                 bestv.emplace_back(make_pair(b, a));
         }
     }
+    string name = "cp" + path.stem().string().substr(7);
+    printTab(tab, outStream, name);
 }
 
 void searchDirectories(const fs::path &directory) {
@@ -322,8 +350,24 @@ void ebcdicDir() {
         if (!entry.is_directory()) {
             string ext = str_tolower(entry.path().extension().string());
             if (ext != ".txt") continue;
-            outfile << endl;
             ebcdic(true, entry.path(), outfile);
+        }
+    }
+}
+
+void bestFitDir() {
+    fs::path dir = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WindowsBestFit";
+    ofstream outfile("bestFit.h");
+    for (const auto &entry: fs::directory_iterator(dir)) {
+        if (!entry.is_directory()) {
+            string ext = str_tolower(entry.path().extension().string());
+            if (ext != ".txt") continue;
+            if (entry.path().stem().string().find("bestfit")!=0)
+                continue;
+            if (entry.file_size() < 50000)
+                processBest(entry.path(), outfile);
+            else
+                processBest12(entry.path(), outfile);
         }
     }
 }
@@ -332,8 +376,9 @@ int main() {
     //processFile(inFile);
     //processBest(inFileBest);
     //processFile12(CP936);
-    processBest12(CP1361Best);
+    //processBest12(CP1361Best);
     //searchDirectories("../www.unicode.org");
-    ebcdicDir();
+    //ebcdicDir();
+    bestFitDir();
     return 0;
 }
