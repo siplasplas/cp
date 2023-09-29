@@ -1,3 +1,7 @@
+/www.unicode.org/
+.idea/
+*build*/
+
 # Prerequisites
 *.d
 
