@@ -37,11 +37,16 @@ bool readTwo(const string &line, int &a, int &b) {
     a = stoi(s1, &idx, 16);
     int pos2 = line.find('\t', pos1 + 1);
     string s2;
-    if (pos2 < 0)
+    int pos2start = pos1 + 1;
+    if (pos2 < 0) {
         pos2 = line.find("  ", pos1 + 1);
-    s2 = line.substr(pos1 + 1, pos2 - pos1 - 1);
-    if (pos2 < 0)
+        pos2start++;
+    }
+    if (pos2 < 0) {
         pos2 = line.length();
+        pos2start--;
+    }
+    s2 = line.substr(pos2start, pos2 - pos2start);
     if (s2.empty() || s2[0] == ' ') {
         int pos3 = line.find('\t', pos2 + 1);
         string s3 = line.substr(pos2 + 1, pos3 - pos2 - 1);
@@ -83,6 +88,28 @@ void readMBtable(ifstream &infile, int mbSize, uint16_t tab[], uint16_t *dbcsroo
         i++;
         if (i==mbSize)
             break;
+    }
+}
+
+void readDBCStable(ifstream &infile, uint16_t *dbcsroot[], int n) {
+    string line;
+    for (line; getline(infile, line);) {
+        line = trimRight(line);
+        if (!line.empty()) break;
+    }
+    if (line.find("DBCSTABLE") != 0)
+        throw runtime_error("can't find DBCSTABLE");
+    int dbcsSize = stoi(line.substr(10));
+    getline(infile, line);
+    line = trimRight(line);
+    if (!line.empty()) throw runtime_error("must be empty line");
+    dbcsroot[n - 128] = new uint16_t[256];
+    memset(dbcsroot[n - 128], 0, 256 * sizeof(uint16_t));
+    for (int i = 0; i < dbcsSize; i++) {
+        getline(infile, line);
+        int a, b;
+        readTwo(line, a, b);
+        dbcsroot[n - 128][a] = b;
     }
 }
 
@@ -195,6 +222,8 @@ void processBest12(const string &filename) {
     getline(infile, line);
     int rangeFrom, rangeTo;
     readTwo(line, rangeFrom, rangeTo);
+    for (int n = rangeFrom; n <= rangeTo; n++)
+        readDBCStable(infile, dbcsroot, n);
     int wcSize = 0;
     for (string line; getline(infile, line);) {
         line = trimRight(line);
