@@ -2,7 +2,10 @@
 #include <fstream>
 #include <vector>
 #include <cstring>
+#include <filesystem>
+#include <algorithm>
 
+namespace fs = std::filesystem;
 using namespace std;
 
 string inFile = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WINDOWS/CP1250.TXT";
@@ -24,6 +27,13 @@ std::string n2hexstr(I w, size_t hex_len = sizeof(I) << 1) {
     for (size_t i = 0, j = (hex_len - 1) * 4; i < hex_len; ++i, j -= 4)
         rc[i] = digits[(w >> j) & 0x0f];
     return rc;
+}
+
+std::string str_tolower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return std::tolower(c); }
+    );
+    return s;
 }
 
 bool readTwo(const string &line, int &a, int &b) {
@@ -123,15 +133,25 @@ void readDBCStables(ifstream &infile, uint16_t *dbcsroot[]) {
     }
 }
 
+void printTab(uint16_t tab[], ofstream &outStream, string name) {
+    outStream << "uint16_t " + name + "[128] = {" << endl;
+    for (int i = 0; i < 128; i += 16) {
+        outStream << "    ";
+        for (int j = i; j < i + 16; j++) {
+            outStream << tab[j];
+            if (j < 127)
+                outStream << ",";
+        }
+        if (i == 128 - 16)
+            outStream << "};";
+        outStream << endl;
+    }
+}
+
 void processFile(const string &filename) {
     uint16_t tab[128];
     ifstream infile(filename);
     readMBtable(infile, 256, tab, nullptr);
-    for (int i = 128; i < 256; i += 16) {
-        for (int j = i; j < i + 16; j++)
-            cout << tab[j - 128] << ",";
-        cout << endl;
-    }
 }
 
 //1 or 2 bytes for code
@@ -255,10 +275,55 @@ void processBest12(const string &filename) {
     }
 }
 
+void searchDirectories(const fs::path &directory) {
+    for (const auto &entry: fs::recursive_directory_iterator(directory)) {
+        if (entry.is_directory()) {
+            std::cout << entry.path() << std::endl;
+        }
+    }
+}
+
+void ebcdic(bool hi, const filesystem::path &path, ofstream &outStream) {
+    uint16_t tab[128];
+    ifstream infile(path);
+    for (string line; getline(infile, line);) {
+        line = trimRight(line);
+        if (line.empty()) continue;
+        if (line[0] == 26) break;
+        if (line[0] == '#') continue;
+        int a, b;
+        readTwo(line, a, b);
+        if (hi) {
+            if (a >= 128)
+                tab[a - 128] = b;
+        } else {
+            if (a < 128)
+                tab[a] = b;
+        }
+    }
+    string name;
+    if (hi)
+        name = path.stem();
+    else
+        name = "ecbdic";
+    printTab(tab, outStream, name);
+}
+
 int main() {
     //processFile(inFile);
     //processBest(inFileBest);
     //processFile12(CP936);
-    processBest12(CP936Best);
+    //processBest12(CP936Best);
+    //searchDirectories("../www.unicode.org");
+    ofstream outfile("ecbdic.h");
+    ebcdic(false, "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/EBCDIC/CP500.TXT", outfile);
+    for (const auto &entry: fs::directory_iterator("../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/EBCDIC")) {
+        if (!entry.is_directory()) {
+            string ext = str_tolower(entry.path().extension().string());
+            if (ext != ".txt") continue;
+            outfile << endl;
+            ebcdic(true, entry.path(), outfile);
+        }
+    }
     return 0;
 }
