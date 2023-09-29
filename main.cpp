@@ -163,6 +163,24 @@ void printTab(uint16_t tab[], ofstream &outStream, string name) {
     }
 }
 
+void printBestTab(vector<pair<uint16_t, uint8_t>> &bestv, ofstream &outStream, string name) {
+    outStream << "uint16_t " + name + "[" << bestv.size() << "][2] = {" << endl;
+    bool isEnd = false;
+    for (int i = 0; i < bestv.size(); i += 16) {
+        outStream << "    ";
+        for (int j = i; j < min(i + 16, (int)bestv.size()); j++) {
+            outStream << bestv[j].first;
+            if (j < bestv.size() - 1)
+                outStream << ",";
+            else
+                isEnd = true;
+        }
+        if (isEnd)
+            outStream << "};";
+        outStream << endl;
+    }
+}
+
 void processFile(const string &filename) {
     uint16_t tab[128];
     ifstream infile(filename);
@@ -179,6 +197,7 @@ void processFile12(const string &filename) {
 }
 
 void processBest(const filesystem::path &path, ofstream &outStream) {
+    string name = "cp" + path.stem().string().substr(7);
     uint16_t tab[128];
     ifstream infile(path);
     int mbSize = 0;
@@ -226,11 +245,18 @@ void processBest(const filesystem::path &path, ofstream &outStream) {
                 bestv.emplace_back(make_pair(b, a));
         }
     }
-    string name = "cp" + path.stem().string().substr(7);
     printTab(tab, outStream, name);
+    printBestTab(bestv, outStream, "b" + name);
+}
+
+void printDBCStables(uint16_t *dbcsroot[], ofstream &outStream, string name) {
+    for (int i = 0; i < 128; i++)
+        if (dbcsroot[i])
+            printTab(dbcsroot[i], outStream, name + "_" + n2hexstr(i, 2));
 }
 
 void processBest12(const filesystem::path &path, ofstream &outStream) {
+    string name = "cp" + path.stem().string().substr(7);
     uint16_t tab[128];
     uint16_t *dbcsroot[128];
     ifstream infile(path);
@@ -295,13 +321,16 @@ void processBest12(const filesystem::path &path, ofstream &outStream) {
             if (a != b)
                 bestv.emplace_back(make_pair(b, a));
         } else {
-            if (a > 255) {}
+            if (a > 255) {
+                bestv.emplace_back(make_pair(b, a));
+            }
             else if (tab[a - 128] != b)
                 bestv.emplace_back(make_pair(b, a));
         }
     }
-    string name = "cp" + path.stem().string().substr(7);
     printTab(tab, outStream, name);
+    printDBCStables(dbcsroot, outStream, name);
+    printBestTab(bestv, outStream, "b" + name);
 }
 
 void searchDirectories(const fs::path &directory) {
@@ -369,12 +398,6 @@ void bestFitDir() {
 }
 
 int main() {
-    //processFile(inFile);
-    //processBest(inFileBest);
-    //processFile12(CP936);
-    //processBest12(CP1361Best);
-    //searchDirectories("../www.unicode.org");
-    //ebcdicDir();
     bestFitDir();
     return 0;
 }
