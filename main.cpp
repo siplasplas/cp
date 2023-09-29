@@ -28,11 +28,20 @@ std::string n2hexstr(I w, size_t hex_len = sizeof(I) << 1) {
 
 bool readTwo(const string &line, int &a, int &b) {
     int pos1 = line.find('\t');
+    if (pos1 < 0)
+        pos1 = line.find("  ");
+    if (pos1 < 0)
+        throw runtime_error("can't read two hex integers");
     string s1 = line.substr(0, pos1);
     size_t idx;
     a = stoi(s1, &idx, 16);
     int pos2 = line.find('\t', pos1 + 1);
-    string s2 = line.substr(pos1 + 1, pos2 - pos1 - 1);
+    string s2;
+    if (pos2 < 0)
+        pos2 = line.find("  ", pos1 + 1);
+    s2 = line.substr(pos1 + 1, pos2 - pos1 - 1);
+    if (pos2 < 0)
+        pos2 = line.length();
     if (s2.empty() || s2[0] == ' ') {
         int pos3 = line.find('\t', pos2 + 1);
         string s3 = line.substr(pos2 + 1, pos3 - pos2 - 1);
@@ -60,8 +69,6 @@ void readMBtable(ifstream &infile, int mbSize, uint16_t tab[], uint16_t *dbcsroo
         if (line[0] == '#') continue;
         int a, b;
         bool dbcs = readTwo(line, a, b);
-        if (a != i)
-            throw runtime_error("MBTable mismatch");
         if (a >= 128)
             tab[a - 128] = dbcs ? 0 : b;
         else if (a != b)
@@ -159,11 +166,70 @@ void processBest(const string &filename) {
     }
 }
 
+void processBest12(const string &filename) {
+    uint16_t tab[128];
+    uint16_t *dbcsroot[128];
+    ifstream infile(filename);
+    int mbSize = 0;
+    for (string line; getline(infile, line);) {
+        line = trimRight(line);
+        if (line.empty()) continue;
+        if (line.substr(0, 7) == "MBTABLE") {
+            mbSize = stoi(line.substr(8));
+            break;
+        }
+    }
+    string line1;
+    getline(infile, line1);
+    line1 = trimRight(line1);
+    if (!line1.empty())
+        throw runtime_error("no empty line");
+    readMBtable(infile, mbSize, tab, dbcsroot);
+    string line;
+    for (; getline(infile, line);) {
+        line = trimRight(line);
+        if (!line.empty()) break;
+    }
+    if (line.find("DBCSRANGE  1") != 0) throw runtime_error("no DBCSRANGE  1");
+    getline(infile, line);
+    getline(infile, line);
+    int rangeFrom, rangeTo;
+    readTwo(line, rangeFrom, rangeTo);
+    int wcSize = 0;
+    for (string line; getline(infile, line);) {
+        line = trimRight(line);
+        if (line.empty()) continue;
+        if (line.substr(0, 7) == "WCTABLE") {
+            wcSize = stoi(line.substr(8));
+            break;
+        }
+    }
+    vector<pair<uint16_t, uint8_t>> bestv;
+    getline(infile, line1);
+    line1 = trimRight(line1);
+    if (!line1.empty())
+        throw runtime_error("no empty line");
+    for (int i = 0; i < wcSize; i++) {
+        string line;
+        getline(infile, line);
+        line = trimRight(line);
+        int a, b;
+        readTwo(line, b, a);
+        if (a < 128) {
+            if (a != b)
+                bestv.emplace_back(make_pair(b, a));
+        } else {
+            if (a > 255) {}
+            else if (tab[a - 128] != b)
+                bestv.emplace_back(make_pair(b, a));
+        }
+    }
+}
 
 int main() {
     //processFile(inFile);
     //processBest(inFileBest);
     //processFile12(CP936);
-    processBest(CP936Best);
+    processBest12(CP936Best);
     return 0;
 }
