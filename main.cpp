@@ -65,14 +65,10 @@ bool readTwo(const string &line, int &a, int &b) {
     int pos2start = pos1 + 1;
     int pos2 = line.find('\t', pos2start);
     string s2;
-    if (pos2 < 0) {
+    if (pos2 < 0)
         pos2 = line.find("  ", pos2start);
-        //pos2start++;
-    }
-    if (pos2 < 0) {
+    if (pos2 < 0)
         pos2 = line.length();
-    //    pos2start--;
-    }
     s2 = line.substr(pos2start, pos2 - pos2start);
     s2 = trim(s2);
     if (s2.empty()) {
