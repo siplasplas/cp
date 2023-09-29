@@ -22,7 +22,6 @@ string trimLeft(const string& str)
     return str.substr(strBegin, str.length() - strBegin);
 }
 
-
 string trimRight(const string& str)
 {
     const auto strEnd = str.find_last_not_of(" \t\r");
@@ -148,8 +147,8 @@ void readDBCStables(ifstream &infile, uint16_t *dbcsroot[]) {
     }
 }
 
-void printTab(uint16_t tab[], ofstream &outStream, string name) {
-    outStream << "uint16_t " + name + "[128] = {" << endl;
+void printTabContent(uint16_t tab[], ofstream &outStream) {
+    outStream << "{" << endl;
     for (int i = 0; i < 128; i += 16) {
         outStream << "    ";
         for (int j = i; j < i + 16; j++) {
@@ -158,9 +157,15 @@ void printTab(uint16_t tab[], ofstream &outStream, string name) {
                 outStream << ",";
         }
         if (i == 128 - 16)
-            outStream << "};";
+            outStream << "}";
         outStream << endl;
     }
+}
+
+void printTab(uint16_t tab[], ofstream &outStream, string name) {
+    outStream << "uint16_t " + name + "[128] = ";
+    printTabContent(tab, outStream);
+    outStream << "}" << endl;
 }
 
 void printBestTab(vector<pair<uint16_t, uint8_t>> &bestv, ofstream &outStream, string name) {
