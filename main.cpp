@@ -48,9 +48,11 @@ bool readTwo(const string &line, int &a, int &b) {
     return false;
 }
 
-void readMBtable(ifstream &infile, uint16_t tab[], uint16_t *dbcsroot[]) {
-    for (int i = 0; i < 128; i++)
+void readMBtable(ifstream &infile, int mbSize, uint16_t tab[], uint16_t *dbcsroot[]) {
+    for (int i = 0; i < 128; i++) {
+        tab[i] = 0xfffd;
         dbcsroot[i] = nullptr;
+    }
     int i = 0;
     for (string line; getline(infile, line);) {
         line = trimRight(line);
@@ -72,7 +74,7 @@ void readMBtable(ifstream &infile, uint16_t tab[], uint16_t *dbcsroot[]) {
             }
         }
         i++;
-        if (i==256)
+        if (i==mbSize)
             break;
     }
 }
@@ -90,7 +92,7 @@ void readDBCStables(ifstream &infile, uint16_t *dbcsroot[]) {
 void processFile(const string &filename) {
     uint16_t tab[128];
     ifstream infile(filename);
-    readMBtable(infile, tab, nullptr);
+    readMBtable(infile, 256, tab, nullptr);
     for (int i = 128; i < 256; i += 16) {
         for (int j = i; j < i + 16; j++)
             cout << tab[j - 128] << ",";
@@ -103,7 +105,7 @@ void processFile12(const string &filename) {
     uint16_t tab[128];
     uint16_t* dbcsroot[128];
     ifstream infile(filename);
-    readMBtable(infile, tab, dbcsroot);
+    readMBtable(infile, 256, tab, dbcsroot);
     readDBCStables(infile, dbcsroot);
 }
 
@@ -124,9 +126,7 @@ void processBest(const string &filename) {
     line1 = trimRight(line1);
     if (!line1.empty())
         throw runtime_error("no empty line");
-    if (mbSize!=256)
-        throw runtime_error("MBTABLE size must be 256");
-    readMBtable(infile, tab, nullptr);
+    readMBtable(infile, mbSize, tab, nullptr);
     int wcSize = 0;
     for (string line; getline(infile, line);) {
         line = trimRight(line);
@@ -163,6 +163,7 @@ void processBest(const string &filename) {
 int main() {
     //processFile(inFile);
     //processBest(inFileBest);
-    processFile12(CP936);
+    //processFile12(CP936);
+    processBest(CP936Best);
     return 0;
 }
