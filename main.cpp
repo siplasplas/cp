@@ -27,21 +27,30 @@ void readTwo(const string &line, int &a, int &b) {
         b = stoi(s2, &idx, 16);
 }
 
-void processFile(const string &filename) {
-    uint16_t tab[128];
-    ifstream infile(filename);
+void readMBtable(ifstream &infile, uint16_t tab[]) {
+    int i = 0;
     for (string line; getline(infile, line);) {
         line = trimRight(line);
         if (line.empty()) continue;
         if (line[0] == '#') continue;
         int a, b;
         readTwo(line, a, b);
+        if (a != i)
+            throw runtime_error("MBTable mismatch");
         if (a >= 128)
             tab[a - 128] = b;
         else if (a != b)
             throw runtime_error("7bit ascii code mismatch");
+        i++;
+        if (i==256)
+            break;
     }
-    cout << endl;
+}
+
+void processFile(const string &filename) {
+    uint16_t tab[128];
+    ifstream infile(filename);
+    readMBtable(infile, tab);
     for (int i = 128; i < 256; i += 16) {
         for (int j = i; j < i + 16; j++)
             cout << tab[j - 128] << ",";
@@ -66,19 +75,9 @@ void processBest(const string &filename) {
     line1 = trimRight(line1);
     if (!line1.empty())
         throw runtime_error("no empty line");
-    for (int i = 0; i < mbSize; i++) {
-        string line;
-        getline(infile, line);
-        line = trimRight(line);
-        int a, b;
-        readTwo(line, a, b);
-        if (a != i)
-            throw runtime_error("MBTABLE mismatch");
-        if (a >= 128)
-            tab[a - 128] = b;
-        else if (a != b)
-            throw runtime_error("7bit ascii code mismatch");
-    }
+    if (mbSize!=256)
+        throw runtime_error("MBTABLE size must be 256");
+    readMBtable(infile, tab);
     int wcSize = 0;
     for (string line; getline(infile, line);) {
         line = trimRight(line);
@@ -113,6 +112,7 @@ void processBest(const string &filename) {
 
 
 int main() {
+    //processFile(inFile);
     processBest(inFileBest);
     return 0;
 }
