@@ -1,0 +1,1 @@
+wget -r --no-parent https://www.unicode.org/Public/MAPPINGS/
