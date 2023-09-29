@@ -158,13 +158,15 @@ void printTabContent(uint16_t tab[], ofstream &outStream) {
         }
         if (i == 128 - 16)
             outStream << "}";
-        outStream << endl;
+        else
+            outStream << endl;
     }
 }
 
 void printTab(uint16_t tab[], ofstream &outStream, string name) {
     outStream << "uint16_t " + name + "[128] = ";
     printTabContent(tab, outStream);
+    outStream << endl;
     outStream << "}" << endl;
 }
 
@@ -184,6 +186,26 @@ void printBestTab(vector<pair<uint16_t, uint8_t>> &bestv, ofstream &outStream, s
             outStream << "};";
         outStream << endl;
     }
+}
+
+void printDBCStables(uint16_t *dbcsroot[], ofstream &outStream, string name) {
+    outStream << "uint16_t " + name + "[128] = ";
+    outStream << "{" << endl;
+    for (int i = 0; i < 128; i += 16) {
+        outStream << "    ";
+        for (int j = i; j < i + 16; j++) {
+            if (dbcsroot[j])
+                printTabContent(dbcsroot[j], outStream);
+            else
+                outStream << "nullptr";
+            if (j < 127)
+                outStream << ",";
+        }
+        if (i == 128 - 16)
+            outStream << "}";
+        outStream << endl;
+    }
+    outStream << "}" << endl;
 }
 
 void processFile(const string &filename) {
@@ -252,12 +274,6 @@ void processBest(const filesystem::path &path, ofstream &outStream) {
     }
     printTab(tab, outStream, name);
     printBestTab(bestv, outStream, "b" + name);
-}
-
-void printDBCStables(uint16_t *dbcsroot[], ofstream &outStream, string name) {
-    for (int i = 0; i < 128; i++)
-        if (dbcsroot[i])
-            printTab(dbcsroot[i], outStream, name + "_" + n2hexstr(i, 2));
 }
 
 void processBest12(const filesystem::path &path, ofstream &outStream) {
@@ -334,7 +350,7 @@ void processBest12(const filesystem::path &path, ofstream &outStream) {
         }
     }
     printTab(tab, outStream, name);
-    printDBCStables(dbcsroot, outStream, name);
+    printDBCStables(dbcsroot, outStream, "d" + name);
     printBestTab(bestv, outStream, "b" + name);
 }
 
