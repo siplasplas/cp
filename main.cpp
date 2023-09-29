@@ -12,6 +12,7 @@ string inFile = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WINDOWS/CP125
 string inFileBest = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WindowsBestFit/bestfit1250.txt";
 string CP936 = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WINDOWS/CP936.TXT";
 string CP936Best = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WindowsBestFit/bestfit936.txt";
+string CP1361Best = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WindowsBestFit/bestfit1361.txt";
 
 string trimRight(const string &str) {
     const auto strEnd = str.find_last_not_of(" \t\r");
@@ -237,13 +238,17 @@ void processBest12(const string &filename) {
         line = trimRight(line);
         if (!line.empty()) break;
     }
-    if (line.find("DBCSRANGE  1") != 0) throw runtime_error("no DBCSRANGE  1");
-    getline(infile, line);
-    getline(infile, line);
-    int rangeFrom, rangeTo;
-    readTwo(line, rangeFrom, rangeTo);
-    for (int n = rangeFrom; n <= rangeTo; n++)
-        readDBCStable(infile, dbcsroot, n);
+    if (line.find("DBCSRANGE  ") != 0) throw runtime_error("no DBCSRANGE");
+    int rangeCount = stoi(line.substr(11));
+    for (int range = 0; range < rangeCount; range++) {
+        getline(infile, line);
+        getline(infile, line);
+        int rangeFrom, rangeTo;
+        readTwo(line, rangeFrom, rangeTo);
+        for (int n = rangeFrom; n <= rangeTo; n++)
+            readDBCStable(infile, dbcsroot, n);
+        getline(infile, line);
+    }
     int wcSize = 0;
     for (string line; getline(infile, line);) {
         line = trimRight(line);
@@ -309,15 +314,11 @@ void ebcdic(bool hi, const filesystem::path &path, ofstream &outStream) {
     printTab(tab, outStream, name);
 }
 
-int main() {
-    //processFile(inFile);
-    //processBest(inFileBest);
-    //processFile12(CP936);
-    //processBest12(CP936Best);
-    //searchDirectories("../www.unicode.org");
+void ebcdicDir() {
+    fs::path dir = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/EBCDIC";
     ofstream outfile("ecbdic.h");
-    ebcdic(false, "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/EBCDIC/CP500.TXT", outfile);
-    for (const auto &entry: fs::directory_iterator("../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/EBCDIC")) {
+    ebcdic(false, dir / "CP500.TXT", outfile);
+    for (const auto &entry: fs::directory_iterator(dir)) {
         if (!entry.is_directory()) {
             string ext = str_tolower(entry.path().extension().string());
             if (ext != ".txt") continue;
@@ -325,5 +326,14 @@ int main() {
             ebcdic(true, entry.path(), outfile);
         }
     }
+}
+
+int main() {
+    //processFile(inFile);
+    //processBest(inFileBest);
+    //processFile12(CP936);
+    processBest12(CP1361Best);
+    //searchDirectories("../www.unicode.org");
+    ebcdicDir();
     return 0;
 }
