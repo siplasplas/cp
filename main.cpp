@@ -87,7 +87,7 @@ bool readTwo(const string &line, int &a, int &b) {
 
 void readMBtable(ifstream &infile, int mbSize, uint16_t tab[], uint16_t *dbcsroot[]) {
     for (int i = 0; i < 128; i++)
-        tab[i] = 0xfffd;
+        tab[i] = 0;
     if (dbcsroot)
         for (int i = 0; i < 128; i++)
             dbcsroot[i] = nullptr;
@@ -147,16 +147,16 @@ void readDBCStables(ifstream &infile, uint16_t *dbcsroot[]) {
     }
 }
 
-void printTabContent(uint16_t tab[], ofstream &outStream) {
+void printTabContent(int size, uint16_t tab[], ofstream &outStream) {
     outStream << "{" << endl;
-    for (int i = 0; i < 128; i += 16) {
+    for (int i = 0; i < size; i += 16) {
         outStream << "    ";
         for (int j = i; j < i + 16; j++) {
             outStream << tab[j];
-            if (j < 127)
+            if (j < size-1)
                 outStream << ",";
         }
-        if (i == 128 - 16)
+        if (i == size - 16)
             outStream << "}";
         else
             outStream << endl;
@@ -165,7 +165,7 @@ void printTabContent(uint16_t tab[], ofstream &outStream) {
 
 void printTab(uint16_t tab[], ofstream &outStream, string name) {
     outStream << "uint16_t " + name + "[128] = ";
-    printTabContent(tab, outStream);
+    printTabContent(128, tab, outStream);
     outStream << endl;
     outStream << "}" << endl;
 }
@@ -189,15 +189,15 @@ void printBestTab(vector<pair<uint16_t, uint8_t>> &bestv, ofstream &outStream, s
 }
 
 void printDBCStables(uint16_t *dbcsroot[], ofstream &outStream, string name) {
-    outStream << "uint16_t " + name + "[128] = ";
+    outStream << "uint16_t " + name + "[128][256] = ";
     outStream << "{" << endl;
     for (int i = 0; i < 128; i += 16) {
         outStream << "    ";
         for (int j = i; j < i + 16; j++) {
             if (dbcsroot[j])
-                printTabContent(dbcsroot[j], outStream);
+                printTabContent(256, dbcsroot[j], outStream);
             else
-                outStream << "nullptr";
+                outStream << "{}";
             if (j < 127)
                 outStream << ",";
         }
