@@ -1,5 +1,6 @@
 #include <iostream>
 #include "Args.h"
+#include "CpManager.h"
 
 using namespace std;
 
@@ -23,6 +24,7 @@ void convert(const string &inFile, const string &outFile, int inFormat, int outF
 }
 
 int main(int argc, char *argv[]) {
+    CpManager cpManager;
     Args args(argc, argv);
     if (argc < 2)
         printHelp();

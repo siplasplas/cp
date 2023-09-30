@@ -11,11 +11,10 @@ int TableCodepage::maxCharLen() {
 }
 
 TableCodepage::TableCodepage(std::string name, uint16_t *convTable) : Codepage(std::move(name)), convTable(convTable) {
-
 }
 
 TableCodepage::TableCodepage(std::string name, uint16_t *convTable, std::pair<uint16_t, uint16_t> *bestTable)
-        : Codepage(std::move(name)), convTable(convTable) {
+        : TableCodepage(std::move(name), convTable) {
     this->bestTable = bestTable;
 }
 
