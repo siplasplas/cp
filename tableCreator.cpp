@@ -10,15 +10,17 @@
 namespace fs = std::filesystem;
 using namespace std;
 
-vector<uint16_t> charPolish = {211, 243, 260, 261, 262, 263, 280, 281, 321, 322, 323, 324, 346, 347, 377,
+Languages langueages;
+
+/*vector<uint16_t> charPolish = {211, 243, 260, 261, 262, 263, 280, 281, 321, 322, 323, 324, 346, 347, 377,
         378, 379, 380};
 vector<uint16_t> charNordic = {0x100, 0x12e, 0x10c, 0x118, 0x116, 0x145, 0x14c, 0x168, 0x172, 0x101, 0x12f, 0x10d,
         0x119, 0x117, 0x146, 0x14d, 0x173};
-
+*/
 class TagSets {
-    vector<string> tags = {"Central European", "Greek", "Cyrillic", "Hebrew", "Arabic", "Syriac",
-            "Thai", "South-Eastern European", "Arabic Isolated", "Nord European"};
-    vector<unordered_set<int>> vsets;
+  /*  vector<string> tags = {"Central European", "Greek", "Cyrillic", "Hebrew", "Arabic", "Syriac",
+            "Thai", "South-Eastern European", "Arabic Isolated", "Nord European"};*/
+    vector<unordered_set<uint16_t>> vsets;
 public:
     bool contains(int n, uint16_t c) {
         return vsets[n].find(c) != vsets[n].end();
@@ -30,65 +32,12 @@ public:
         return false;
     }
 
-    TagSets() {
-        unordered_set<int> set0;
-        for (auto c: charPolish)
-            set0.insert(c);
-        vsets.push_back(set0);
-
-        unordered_set<int> set1;
-        for (int c = 0x392; c <= 0x39f; c++) {
-            set1.insert(c);
+    TagSets(Languages &langs) {
+        unordered_set<uint16_t> set;
+        for (int i=0; i<langs.size(); i++) {
+            set = langs.alphabetToSet(i);
+            vsets.push_back(set);
         }
-        vsets.push_back(set1);
-
-        unordered_set<int> set2;
-        for (int c = 1040; c <= 1103; c++) {
-            set2.insert(c);
-        }
-        vsets.push_back(set2);
-
-        unordered_set<int> set3;
-        for (int c = 1488; c <= 1514; c++) {
-            set3.insert(c);
-        }
-        vsets.push_back(set3);
-
-        unordered_set<int> set4;
-        for (int c = 0x627; c <= 0x636; c++) {
-            set4.insert(c);
-        }
-        vsets.push_back(set4);
-
-        unordered_set<int> set5;
-        for (int c = 1808; c <= 1836; c++) {
-            set5.insert(c);
-        }
-        vsets.push_back(set5);
-
-        unordered_set<int> set6;
-        for (int c = 3585; c <= 3631; c++) {
-            set6.insert(c);
-        }
-        vsets.push_back(set6);
-
-        unordered_set<int> set7;
-        set7.insert(0xc0);
-        set7.insert(0xc1);
-        set7.insert(0xc2);
-        set7.insert(0xc4);
-        vsets.push_back(set7);
-
-        unordered_set<int> set8;
-        set8.insert(0xfe8d);
-        set8.insert(0xfe8f);
-        set8.insert(0xfe9d);
-        vsets.push_back(set8);
-
-        unordered_set<int> set9;
-        for (auto c: charNordic)
-            set9.insert(c);
-        vsets.push_back(set9);
     }
 
     void erase(uint16_t c) {
@@ -307,7 +256,7 @@ void writeDBCStables(uint16_t *dbcsroot[], ofstream &outStream, string name) {
 
 void processFile(const filesystem::path &path, ofstream &outStream) {
     uint16_t tab[128];
-    TagSets ts;
+    TagSets ts(langueages);
     vector<pair<uint16_t, uint16_t>> bestv;
     ifstream infile(path);
     string name = path.stem().string();
@@ -325,7 +274,7 @@ void processFile12(const filesystem::path &path) {
     ofstream outStream((string)"../data/" + path.stem().string()+".h");
     uint16_t tab[128];
     uint16_t* dbcsroot[128];
-    TagSets ts;
+    TagSets ts(langueages);
     vector<pair<uint16_t, uint16_t>> bestv;
     ifstream infile(path);
     readMBtable(infile, 256, tab, dbcsroot, bestv, ts);
@@ -340,7 +289,7 @@ void processFile12(const filesystem::path &path) {
 void processBest(const filesystem::path &path, ofstream &outStream) {
     string name = "cp" + path.stem().string().substr(7);
     uint16_t tab[128];
-    TagSets ts;
+    TagSets ts(langueages);
     ifstream infile(path);
     int mbSize = 0;
     for (string line; getline(infile, line);) {
@@ -398,7 +347,7 @@ void processBest12(const filesystem::path &path) {
     string name = "cp" + path.stem().string().substr(7);
     uint16_t tab[128];
     uint16_t *dbcsroot[128];
-    TagSets ts;
+    TagSets ts(langueages);
     ifstream infile(path);
     int mbSize = 0;
     for (string line; getline(infile, line);) {
@@ -585,7 +534,6 @@ void processAll() {
 }
 
 int main() {
-    Languages langueages;
     langueages.readFromFile("../languages.txt");
     processAll();
     return 0;

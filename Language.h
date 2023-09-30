@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <unordered_set>
 
 using namespace std;
 
@@ -16,12 +17,15 @@ struct Language {
     void read(ifstream &inStream);
     string key(string line);
     static string subQuotes(string line);
+    unordered_set<uint16_t> alphabetToSet();
 };
 
 class Languages {
     vector<Language> languages;
 public:
+    int size();
     void readFromFile(const filesystem::path &path);
+    unordered_set<uint16_t> alphabetToSet(int n);
 };
 
 #endif //CPG_LANGUAGE_H

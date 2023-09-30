@@ -13,11 +13,20 @@ void Languages::readFromFile(const filesystem::path &path) {
     ifstream infile(path);
     while (!infile.eof()) {
         Language lang;
+        cout << languages.size() << ": ";
         lang.read(infile);
         languages.push_back(lang);
         string line;
         getline(infile, line);
     }
+}
+
+int Languages::size() {
+    return languages.size();
+}
+
+unordered_set<uint16_t> Languages::alphabetToSet(int n) {
+    return languages[n].alphabetToSet();
 }
 
 string Language::key(string line) {
@@ -49,5 +58,12 @@ void Language::read(ifstream &inStream) {
     UTF utf;
     alphabet = utf.u8to16(subQuotes(line));
     assert(key(line) == "alphabet");
+}
+
+unordered_set<uint16_t> Language::alphabetToSet() {
+    unordered_set<uint16_t> set;
+    for (auto c: alphabet)
+        set.insert(c);
+    return set;
 }
 
