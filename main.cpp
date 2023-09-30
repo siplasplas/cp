@@ -166,17 +166,16 @@ void printTabContent(int size, uint16_t tab[], ofstream &outStream) {
 void printTab(uint16_t tab[], ofstream &outStream, string name) {
     outStream << "uint16_t " + name + "[128] = ";
     printTabContent(128, tab, outStream);
-    outStream << endl;
-    outStream << "}" << endl;
+    outStream << ";" << endl;
 }
 
-void printBestTab(vector<pair<uint16_t, uint8_t>> &bestv, ofstream &outStream, string name) {
+void printBestTab(vector<pair<uint16_t, uint16_t>> &bestv, ofstream &outStream, string name) {
     outStream << "uint16_t " + name + "[" << bestv.size() << "][2] = {" << endl;
     bool isEnd = false;
     for (int i = 0; i < bestv.size(); i += 16) {
         outStream << "    ";
         for (int j = i; j < min(i + 16, (int)bestv.size()); j++) {
-            outStream << bestv[j].first;
+            outStream << "{" << bestv[j].first << "," << bestv[j].second << "}";
             if (j < bestv.size() - 1)
                 outStream << ",";
             else
@@ -202,10 +201,9 @@ void printDBCStables(uint16_t *dbcsroot[], ofstream &outStream, string name) {
                 outStream << ",";
         }
         if (i == 128 - 16)
-            outStream << "}";
+            outStream << "};";
         outStream << endl;
     }
-    outStream << "}" << endl;
 }
 
 void processFile(const string &filename) {
@@ -251,7 +249,7 @@ void processBest(const filesystem::path &path, ofstream &outStream) {
             break;
         }
     }
-    vector<pair<uint16_t, uint8_t>> bestv;
+    vector<pair<uint16_t, uint16_t>> bestv;
     getline(infile, line1);
     line1 = trimRight(line1);
     if (!line1.empty())
@@ -327,7 +325,7 @@ void processBest12(const filesystem::path &path, ofstream &outStream) {
             break;
         }
     }
-    vector<pair<uint16_t, uint8_t>> bestv;
+    vector<pair<uint16_t, uint16_t>> bestv;
     getline(infile, line1);
     line1 = trimRight(line1);
     if (!line1.empty())
@@ -343,9 +341,11 @@ void processBest12(const filesystem::path &path, ofstream &outStream) {
                 bestv.emplace_back(make_pair(b, a));
         } else {
             if (a > 255) {
-                bestv.emplace_back(make_pair(b, a));
+                if (dbcsroot[a/256-128][a % 256] != b)
+                    bestv.emplace_back(make_pair(b, a));
             }
-            else if (tab[a - 128] != b)
+            else
+                if (tab[a - 128] != b)
                 bestv.emplace_back(make_pair(b, a));
         }
     }
