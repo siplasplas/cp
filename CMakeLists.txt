@@ -7,4 +7,5 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_executable(tableCreator tableCreator.cpp)
 
-add_executable(convcp converter.cpp)
+add_executable(convcp converter.cpp Args.cpp
+        CpManager.h)
