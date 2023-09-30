@@ -181,7 +181,7 @@ alphabet="abcçdefgğhıijklmnoöprsştuüvyzâîûABCÇDEFGĞHIİJKLMNOÖPRSŞT
 name="Ukrainian",
 iso_code="uk",
 use_ascii=False,
-charsets=["KOI8-U"],
+charsets=["KOI8-U", "WINDOWS-1251"],
 alphabet="абвгґдеєжзиіїйклмнопрстуфхцчшщьюяАБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ",
 
 name="Vietnamese",

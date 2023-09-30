@@ -12,4 +12,12 @@ add_executable(tableCreator tableCreator.cpp
 add_executable(convcp converter.cpp Args.cpp
         CpManager.h
         Language.h
-        Language.cpp)
+        Language.cpp
+        CpManager.cpp
+        Codepage.h
+        UtfCodepage.h
+        TableCodepage.h
+        UtfCodepage.cpp
+        TableCodepage.cpp
+        BigTableCodepage.cpp
+        Codepage.cpp)
