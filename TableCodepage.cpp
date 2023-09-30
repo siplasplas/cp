@@ -19,3 +19,11 @@ TableCodepage::TableCodepage(std::string name, uint16_t *convTable, std::pair<ui
     this->bestTable = bestTable;
 }
 
+std::u32string TableCodepage::toU32(std::string_view str) {
+    return std::u32string();
+}
+
+std::string TableCodepage::fromU32(u32string_view dstr) {
+    return std::string();
+}
+

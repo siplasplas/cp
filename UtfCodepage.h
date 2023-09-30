@@ -10,6 +10,8 @@ public:
     UtfCodepage(std::string name, int width, bool binEndian);
     int minCharLen() override;
     int maxCharLen() override;
+    std::u32string toU32(std::string_view str) override;
+    std::string fromU32(u32string_view dstr) override;
 };
 
 
