@@ -469,6 +469,7 @@ void bestFitDir() {
 }
 
 void processAll() {
+    fs::create_directories("../data");
     bestFitDir();
     ebcdicDir();
     miscDir();
