@@ -220,7 +220,8 @@ void processFile(const filesystem::path &path, ofstream &outStream) {
 }
 
 //1 or 2 bytes for code
-void processFile12(const filesystem::path &path, ofstream &outStream) {
+void processFile12(const filesystem::path &path) {
+    ofstream outStream((string)"../data/" + path.stem().string()+".h");
     uint16_t tab[128];
     uint16_t* dbcsroot[128];
     vector<pair<uint16_t, uint16_t>> bestv;
@@ -287,7 +288,8 @@ void processBest(const filesystem::path &path, ofstream &outStream) {
     printBestTab(bestv, outStream, "b" + name);
 }
 
-void processBest12(const filesystem::path &path, ofstream &outStream) {
+void processBest12(const filesystem::path &path) {
+    ofstream outStream((string)"../data/" + path.stem().string()+".h");
     string name = "cp" + path.stem().string().substr(7);
     uint16_t tab[128];
     uint16_t *dbcsroot[128];
@@ -403,16 +405,16 @@ void ebcdic(bool hi, const filesystem::path &path, ofstream &outStream) {
 
 void ebcdicDir() {
     fs::path dir = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/EBCDIC";
-    ofstream outfile("ecbdic.h");
-    ebcdic(false, dir / "CP500.TXT", outfile);
+    ofstream outStream((string)"../data/" + "ecbdic.h");
+    ebcdic(false, dir / "CP500.TXT", outStream);
     for (const auto &entry: fs::directory_iterator(dir)) {
         if (!entry.is_directory()) {
             string ext = str_tolower(entry.path().extension().string());
             if (ext != ".txt") continue;
-            ebcdic(true, entry.path(), outfile);
+            ebcdic(true, entry.path(), outStream);
         }
     }
-    ebcdic(true, "../www.unicode.org/Public/MAPPINGS/VENDORS/MISC/CP424.TXT", outfile);
+    ebcdic(true, "../www.unicode.org/Public/MAPPINGS/VENDORS/MISC/CP424.TXT", outStream);
 }
 
 void miscDir() {
@@ -422,7 +424,7 @@ void miscDir() {
     for (auto &elem: toSkipVec)
         toSkip.insert(elem);
     fs::path dir = "../www.unicode.org/Public/MAPPINGS/VENDORS/MISC";
-    ofstream outfile("misc.h");
+    ofstream outStream((string)"../data/" + "misc.h");
     for (const auto &entry: fs::directory_iterator(dir)) {
         if (!entry.is_directory()) {
             string ext = str_tolower(entry.path().extension().string());
@@ -430,28 +432,28 @@ void miscDir() {
             if (toSkip.find(entry.path().filename()) != toSkip.end())
                 continue;
             if (entry.file_size() < 50000)
-                processFile(entry.path(), outfile);
+                processFile(entry.path(), outStream);
             else
-                processFile12(entry.path(), outfile);
+                processFile12(entry.path());
         }
     }
 }
 
 void processDir(const filesystem::path &dir) {
-    ofstream outfile(dir.filename().string() + ".h");
+    ofstream outStream((string)"../data/" + dir.filename().string() + ".h");
     for (const auto &entry: fs::directory_iterator(dir)) {
         if (!entry.is_directory()) {
             string ext = str_tolower(entry.path().extension().string());
             if (ext != ".txt") continue;
             if (entry.path().stem().string() == "ReadMe") continue;
-            processFile(entry.path(), outfile);
+            processFile(entry.path(), outStream);
         }
     }
 }
 
 void bestFitDir() {
     fs::path dir = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WindowsBestFit";
-    ofstream outfile("bestFit.h");
+    ofstream outStream((string)"../data/" + "bestFit.h");
     for (const auto &entry: fs::directory_iterator(dir)) {
         if (!entry.is_directory()) {
             string ext = str_tolower(entry.path().extension().string());
@@ -459,18 +461,23 @@ void bestFitDir() {
             if (entry.path().stem().string().find("bestfit") != 0)
                 continue;
             if (entry.file_size() < 50000)
-                processBest(entry.path(), outfile);
+                processBest(entry.path(), outStream);
             else
-                processBest12(entry.path(), outfile);
+                processBest12(entry.path());
         }
     }
 }
 
-int main() {
-    //miscDir();
-    //ebcdicDir();
+void processAll() {
+    bestFitDir();
+    ebcdicDir();
+    miscDir();
     processDir("../www.unicode.org/Public/MAPPINGS/ISO8859");
     processDir("../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/MAC");
     processDir("../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/PC");
+}
+
+int main() {
+    processAll();
     return 0;
 }
