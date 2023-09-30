@@ -4,6 +4,7 @@
 #include <cstring>
 #include <filesystem>
 #include <algorithm>
+#include <unordered_set>
 
 namespace fs = std::filesystem;
 using namespace std;
@@ -103,7 +104,6 @@ void readMBtable(ifstream &infile, int mbSize, uint16_t tab[], uint16_t *dbcsroo
         else if (a != b)
             throw runtime_error("7bit ascii code mismatch");
         if (dbcs) {
-            cout << "dbcs" << n2hexstr(b, 2) << endl;
             if (!dbcsroot[a - 128]) {
                 dbcsroot[a - 128] = new uint16_t[256];
                 memset(dbcsroot[a - 128], 0, 256 * sizeof(uint16_t));
@@ -141,6 +141,7 @@ void readDBCStables(ifstream &infile, uint16_t *dbcsroot[]) {
     for (string line; getline(infile, line);) {
         line = trimRight(line);
         if (line.empty()) break;
+        if (line[0] == '#') continue;
         int a, b;
         readTwo(line, a, b);
         dbcsroot[(a>>8)-128][a & 0xff] = b;
@@ -206,19 +207,25 @@ void printDBCStables(uint16_t *dbcsroot[], ofstream &outStream, string name) {
     }
 }
 
-void processFile(const string &filename) {
+void processFile(const filesystem::path &path, ofstream &outStream) {
     uint16_t tab[128];
-    ifstream infile(filename);
+    ifstream infile(path);
     readMBtable(infile, 256, tab, nullptr);
+    string name = path.stem().string();
+    std::replace( name.begin(), name.end(), '-', '_');
+    printTab(tab, outStream, name);
 }
 
 //1 or 2 bytes for code
-void processFile12(const string &filename) {
+void processFile12(const filesystem::path &path, ofstream &outStream) {
     uint16_t tab[128];
     uint16_t* dbcsroot[128];
-    ifstream infile(filename);
+    ifstream infile(path);
     readMBtable(infile, 256, tab, dbcsroot);
     readDBCStables(infile, dbcsroot);
+    string name = path.stem().string();
+    printTab(tab, outStream, name);
+    printDBCStables(dbcsroot, outStream, "d" + name);
 }
 
 void processBest(const filesystem::path &path, ofstream &outStream) {
@@ -399,6 +406,29 @@ void ebcdicDir() {
             ebcdic(true, entry.path(), outfile);
         }
     }
+    ebcdic(true, "../www.unicode.org/Public/MAPPINGS/VENDORS/MISC/CP424.TXT", outfile);
+}
+
+void miscDir() {
+    vector<string> toSkipVec = {"CP424.TXT", "US-ASCII-QUOTES.TXT", "APL-ISO-IR-68.TXT",
+            "SGML.TXT", "IBMGRAPH.TXT"};
+    unordered_set<string> toSkip;
+    for (auto &elem: toSkipVec)
+        toSkip.insert(elem);
+    fs::path dir = "../www.unicode.org/Public/MAPPINGS/VENDORS/MISC";
+    ofstream outfile("misc.h");
+    for (const auto &entry: fs::directory_iterator(dir)) {
+        if (!entry.is_directory()) {
+            string ext = str_tolower(entry.path().extension().string());
+            if (ext != ".txt") continue;
+            if (toSkip.find(entry.path().filename()) != toSkip.end())
+                continue;
+            if (entry.file_size() < 50000)
+                processFile(entry.path(), outfile);
+            else
+                processFile12(entry.path(), outfile);
+        }
+    }
 }
 
 void bestFitDir() {
@@ -408,7 +438,7 @@ void bestFitDir() {
         if (!entry.is_directory()) {
             string ext = str_tolower(entry.path().extension().string());
             if (ext != ".txt") continue;
-            if (entry.path().stem().string().find("bestfit")!=0)
+            if (entry.path().stem().string().find("bestfit") != 0)
                 continue;
             if (entry.file_size() < 50000)
                 processBest(entry.path(), outfile);
@@ -419,6 +449,7 @@ void bestFitDir() {
 }
 
 int main() {
-    bestFitDir();
+    miscDir();
+    //ebcdicDir();
     return 0;
 }
