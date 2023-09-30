@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <algorithm>
 #include <unordered_set>
+#include "Language.h"
 
 namespace fs = std::filesystem;
 using namespace std;
@@ -584,6 +585,8 @@ void processAll() {
 }
 
 int main() {
+    Languages langueages;
+    langueages.readFromFile("../languages.txt");
     processAll();
     return 0;
 }
