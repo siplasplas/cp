@@ -9,6 +9,100 @@
 namespace fs = std::filesystem;
 using namespace std;
 
+vector<uint16_t> charPolish = {211, 243, 260, 261, 262, 263, 280, 281, 321, 322, 323, 324, 346, 347, 377,
+        378, 379, 380};
+vector<uint16_t> charNordic = {0x100, 0x12e, 0x10c, 0x118, 0x116, 0x145, 0x14c, 0x168, 0x172, 0x101, 0x12f, 0x10d,
+        0x119, 0x117, 0x146, 0x14d, 0x173};
+
+class TagSets {
+    vector<string> tags = {"Central European", "Greek", "Cyrillic", "Hebrew", "Arabic", "Syriac",
+            "Thai", "South-Eastern European", "Arabic Isolated", "Nord European"};
+    vector<unordered_set<int>> vsets;
+public:
+    bool contains(int n, uint16_t c) {
+        return vsets[n].find(c) != vsets[n].end();
+    }
+
+    bool contains(uint16_t c) {
+        for (int i = 0; i < vsets.size(); i++)
+            if (contains(i, c)) return true;
+        return false;
+    }
+
+    TagSets() {
+        unordered_set<int> set0;
+        for (auto c: charPolish)
+            set0.insert(c);
+        vsets.push_back(set0);
+
+        unordered_set<int> set1;
+        for (int c = 0x392; c <= 0x39f; c++) {
+            set1.insert(c);
+        }
+        vsets.push_back(set1);
+
+        unordered_set<int> set2;
+        for (int c = 1040; c <= 1103; c++) {
+            set2.insert(c);
+        }
+        vsets.push_back(set2);
+
+        unordered_set<int> set3;
+        for (int c = 1488; c <= 1514; c++) {
+            set3.insert(c);
+        }
+        vsets.push_back(set3);
+
+        unordered_set<int> set4;
+        for (int c = 0x627; c <= 0x636; c++) {
+            set4.insert(c);
+        }
+        vsets.push_back(set4);
+
+        unordered_set<int> set5;
+        for (int c = 1808; c <= 1836; c++) {
+            set5.insert(c);
+        }
+        vsets.push_back(set5);
+
+        unordered_set<int> set6;
+        for (int c = 3585; c <= 3631; c++) {
+            set6.insert(c);
+        }
+        vsets.push_back(set6);
+
+        unordered_set<int> set7;
+        set7.insert(0xc0);
+        set7.insert(0xc1);
+        set7.insert(0xc2);
+        set7.insert(0xc4);
+        vsets.push_back(set7);
+
+        unordered_set<int> set8;
+        set8.insert(0xfe8d);
+        set8.insert(0xfe8f);
+        set8.insert(0xfe9d);
+        vsets.push_back(set8);
+
+        unordered_set<int> set9;
+        for (auto c: charNordic)
+            set9.insert(c);
+        vsets.push_back(set9);
+    }
+
+    void erase(uint16_t c) {
+        for (auto &set: vsets)
+            set.erase(c);
+    }
+
+    void print_empty() {
+        for (int i = 0; i < vsets.size(); i++)
+            if (vsets[i].empty())
+                cout << i << " ";
+        cout << endl;
+    }
+};
+
 string inFile = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WINDOWS/CP1250.TXT";
 string inFileBest = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WindowsBestFit/bestfit1250.txt";
 string CP936 = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WINDOWS/CP936.TXT";
@@ -86,7 +180,8 @@ bool readTwo(const string &line, int &a, int &b) {
     return false;
 }
 
-void readMBtable(ifstream &infile, int mbSize, uint16_t tab[], uint16_t *dbcsroot[], vector<pair<uint16_t, uint16_t>> &bestv) {
+void readMBtable(ifstream &infile, int mbSize, uint16_t tab[], uint16_t *dbcsroot[],
+                 vector<pair<uint16_t, uint16_t>> &bestv, TagSets &ts) {
     for (int i = 0; i < 128; i++)
         tab[i] = 0;
     if (dbcsroot)
@@ -99,6 +194,8 @@ void readMBtable(ifstream &infile, int mbSize, uint16_t tab[], uint16_t *dbcsroo
         if (line[0] == '#') continue;
         int a, b;
         bool dbcs = readTwo(line, a, b);
+        if (!dbcs)
+            ts.erase(b);
         if (a >= 128)
             tab[a - 128] = dbcs ? 0 : b;
         else if (a != b)
@@ -148,7 +245,7 @@ void readDBCStables(ifstream &infile, uint16_t *dbcsroot[]) {
     }
 }
 
-void printTabContent(int size, uint16_t tab[], ofstream &outStream) {
+void writeTabContent(int size, uint16_t tab[], ofstream &outStream) {
     outStream << "{" << endl;
     for (int i = 0; i < size; i += 16) {
         outStream << "    ";
@@ -164,13 +261,13 @@ void printTabContent(int size, uint16_t tab[], ofstream &outStream) {
     }
 }
 
-void printTab(uint16_t tab[], ofstream &outStream, string name) {
+void writeTab(uint16_t tab[], ofstream &outStream, string name) {
     outStream << "uint16_t " + name + "[128] = ";
-    printTabContent(128, tab, outStream);
+    writeTabContent(128, tab, outStream);
     outStream << ";" << endl;
 }
 
-void printBestTab(vector<pair<uint16_t, uint16_t>> &bestv, ofstream &outStream, string name) {
+void writeBestTab(vector<pair<uint16_t, uint16_t>> &bestv, ofstream &outStream, string name) {
     outStream << "uint16_t " + name + "[" << bestv.size() << "][2] = {" << endl;
     bool isEnd = false;
     for (int i = 0; i < bestv.size(); i += 16) {
@@ -188,14 +285,14 @@ void printBestTab(vector<pair<uint16_t, uint16_t>> &bestv, ofstream &outStream, 
     }
 }
 
-void printDBCStables(uint16_t *dbcsroot[], ofstream &outStream, string name) {
+void writeDBCStables(uint16_t *dbcsroot[], ofstream &outStream, string name) {
     outStream << "uint16_t " + name + "[128][256] = ";
     outStream << "{" << endl;
     for (int i = 0; i < 128; i += 16) {
         outStream << "    ";
         for (int j = i; j < i + 16; j++) {
             if (dbcsroot[j])
-                printTabContent(256, dbcsroot[j], outStream);
+                writeTabContent(256, dbcsroot[j], outStream);
             else
                 outStream << "{}";
             if (j < 127)
@@ -209,14 +306,17 @@ void printDBCStables(uint16_t *dbcsroot[], ofstream &outStream, string name) {
 
 void processFile(const filesystem::path &path, ofstream &outStream) {
     uint16_t tab[128];
+    TagSets ts;
     vector<pair<uint16_t, uint16_t>> bestv;
     ifstream infile(path);
-    readMBtable(infile, 256, tab, nullptr, bestv);
     string name = path.stem().string();
     std::replace( name.begin(), name.end(), '-', '_');
-    printTab(tab, outStream, name);
+    readMBtable(infile, 256, tab, nullptr, bestv, ts);
+    writeTab(tab, outStream, name);
     if (bestv.size()>0)
-        printBestTab(bestv, outStream, "b" + name);
+        writeBestTab(bestv, outStream, "b" + name);
+    cout << path.filename() << ": ";
+    ts.print_empty();
 }
 
 //1 or 2 bytes for code
@@ -224,20 +324,22 @@ void processFile12(const filesystem::path &path) {
     ofstream outStream((string)"../data/" + path.stem().string()+".h");
     uint16_t tab[128];
     uint16_t* dbcsroot[128];
+    TagSets ts;
     vector<pair<uint16_t, uint16_t>> bestv;
     ifstream infile(path);
-    readMBtable(infile, 256, tab, dbcsroot, bestv);
+    readMBtable(infile, 256, tab, dbcsroot, bestv, ts);
     readDBCStables(infile, dbcsroot);
     string name = path.stem().string();
-    printTab(tab, outStream, name);
-    printDBCStables(dbcsroot, outStream, "d" + name);
+    writeTab(tab, outStream, name);
+    writeDBCStables(dbcsroot, outStream, "d" + name);
     if (bestv.size()>0)
-        printBestTab(bestv, outStream, "b" + name);
+        writeBestTab(bestv, outStream, "b" + name);
 }
 
 void processBest(const filesystem::path &path, ofstream &outStream) {
     string name = "cp" + path.stem().string().substr(7);
     uint16_t tab[128];
+    TagSets ts;
     ifstream infile(path);
     int mbSize = 0;
     for (string line; getline(infile, line);) {
@@ -254,7 +356,7 @@ void processBest(const filesystem::path &path, ofstream &outStream) {
     if (!line1.empty())
         throw runtime_error("no empty line");
     vector<pair<uint16_t, uint16_t>> bestv;
-    readMBtable(infile, mbSize, tab, nullptr, bestv);
+    readMBtable(infile, mbSize, tab, nullptr, bestv, ts);
     int wcSize = 0;
     for (string line; getline(infile, line);) {
         line = trimRight(line);
@@ -284,8 +386,10 @@ void processBest(const filesystem::path &path, ofstream &outStream) {
                 bestv.emplace_back(make_pair(b, a));
         }
     }
-    printTab(tab, outStream, name);
-    printBestTab(bestv, outStream, "b" + name);
+    writeTab(tab, outStream, name);
+    writeBestTab(bestv, outStream, "b" + name);
+    cout << path.filename() << ": ";
+    ts.print_empty();
 }
 
 void processBest12(const filesystem::path &path) {
@@ -293,6 +397,7 @@ void processBest12(const filesystem::path &path) {
     string name = "cp" + path.stem().string().substr(7);
     uint16_t tab[128];
     uint16_t *dbcsroot[128];
+    TagSets ts;
     ifstream infile(path);
     int mbSize = 0;
     for (string line; getline(infile, line);) {
@@ -309,7 +414,7 @@ void processBest12(const filesystem::path &path) {
     if (!line1.empty())
         throw runtime_error("no empty line");
     vector<pair<uint16_t, uint16_t>> bestv;
-    readMBtable(infile, mbSize, tab, dbcsroot, bestv);
+    readMBtable(infile, mbSize, tab, dbcsroot, bestv, ts);
     string line;
     for (; getline(infile, line);) {
         line = trimRight(line);
@@ -364,9 +469,9 @@ void processBest12(const filesystem::path &path) {
                 bestv.emplace_back(make_pair(b, a));
         }
     }
-    printTab(tab, outStream, name);
-    printDBCStables(dbcsroot, outStream, "d" + name);
-    printBestTab(bestv, outStream, "b" + name);
+    writeTab(tab, outStream, name);
+    writeDBCStables(dbcsroot, outStream, "d" + name);
+    writeBestTab(bestv, outStream, "b" + name);
 }
 
 void searchDirectories(const fs::path &directory) {
@@ -400,7 +505,7 @@ void ebcdic(bool hi, const filesystem::path &path, ofstream &outStream) {
         name = path.stem();
     else
         name = "ecbdic";
-    printTab(tab, outStream, name);
+    writeTab(tab, outStream, name);
 }
 
 void ebcdicDir() {
