@@ -86,7 +86,7 @@ bool readTwo(const string &line, int &a, int &b) {
     return false;
 }
 
-void readMBtable(ifstream &infile, int mbSize, uint16_t tab[], uint16_t *dbcsroot[]) {
+void readMBtable(ifstream &infile, int mbSize, uint16_t tab[], uint16_t *dbcsroot[], vector<pair<uint16_t, uint16_t>> &bestv) {
     for (int i = 0; i < 128; i++)
         tab[i] = 0;
     if (dbcsroot)
@@ -102,7 +102,7 @@ void readMBtable(ifstream &infile, int mbSize, uint16_t tab[], uint16_t *dbcsroo
         if (a >= 128)
             tab[a - 128] = dbcs ? 0 : b;
         else if (a != b)
-            throw runtime_error("7bit ascii code mismatch");
+            bestv.emplace_back(make_pair(b, a));
         if (dbcs) {
             if (!dbcsroot[a - 128]) {
                 dbcsroot[a - 128] = new uint16_t[256];
@@ -209,23 +209,29 @@ void printDBCStables(uint16_t *dbcsroot[], ofstream &outStream, string name) {
 
 void processFile(const filesystem::path &path, ofstream &outStream) {
     uint16_t tab[128];
+    vector<pair<uint16_t, uint16_t>> bestv;
     ifstream infile(path);
-    readMBtable(infile, 256, tab, nullptr);
+    readMBtable(infile, 256, tab, nullptr, bestv);
     string name = path.stem().string();
     std::replace( name.begin(), name.end(), '-', '_');
     printTab(tab, outStream, name);
+    if (bestv.size()>0)
+        printBestTab(bestv, outStream, "b" + name);
 }
 
 //1 or 2 bytes for code
 void processFile12(const filesystem::path &path, ofstream &outStream) {
     uint16_t tab[128];
     uint16_t* dbcsroot[128];
+    vector<pair<uint16_t, uint16_t>> bestv;
     ifstream infile(path);
-    readMBtable(infile, 256, tab, dbcsroot);
+    readMBtable(infile, 256, tab, dbcsroot, bestv);
     readDBCStables(infile, dbcsroot);
     string name = path.stem().string();
     printTab(tab, outStream, name);
     printDBCStables(dbcsroot, outStream, "d" + name);
+    if (bestv.size()>0)
+        printBestTab(bestv, outStream, "b" + name);
 }
 
 void processBest(const filesystem::path &path, ofstream &outStream) {
@@ -246,7 +252,8 @@ void processBest(const filesystem::path &path, ofstream &outStream) {
     line1 = trimRight(line1);
     if (!line1.empty())
         throw runtime_error("no empty line");
-    readMBtable(infile, mbSize, tab, nullptr);
+    vector<pair<uint16_t, uint16_t>> bestv;
+    readMBtable(infile, mbSize, tab, nullptr, bestv);
     int wcSize = 0;
     for (string line; getline(infile, line);) {
         line = trimRight(line);
@@ -256,7 +263,6 @@ void processBest(const filesystem::path &path, ofstream &outStream) {
             break;
         }
     }
-    vector<pair<uint16_t, uint16_t>> bestv;
     getline(infile, line1);
     line1 = trimRight(line1);
     if (!line1.empty())
@@ -300,7 +306,8 @@ void processBest12(const filesystem::path &path, ofstream &outStream) {
     line1 = trimRight(line1);
     if (!line1.empty())
         throw runtime_error("no empty line");
-    readMBtable(infile, mbSize, tab, dbcsroot);
+    vector<pair<uint16_t, uint16_t>> bestv;
+    readMBtable(infile, mbSize, tab, dbcsroot, bestv);
     string line;
     for (; getline(infile, line);) {
         line = trimRight(line);
@@ -332,7 +339,6 @@ void processBest12(const filesystem::path &path, ofstream &outStream) {
             break;
         }
     }
-    vector<pair<uint16_t, uint16_t>> bestv;
     getline(infile, line1);
     line1 = trimRight(line1);
     if (!line1.empty())
@@ -431,6 +437,18 @@ void miscDir() {
     }
 }
 
+void processDir(const filesystem::path &dir) {
+    ofstream outfile(dir.filename().string() + ".h");
+    for (const auto &entry: fs::directory_iterator(dir)) {
+        if (!entry.is_directory()) {
+            string ext = str_tolower(entry.path().extension().string());
+            if (ext != ".txt") continue;
+            if (entry.path().stem().string() == "ReadMe") continue;
+            processFile(entry.path(), outfile);
+        }
+    }
+}
+
 void bestFitDir() {
     fs::path dir = "../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WindowsBestFit";
     ofstream outfile("bestFit.h");
@@ -449,7 +467,10 @@ void bestFitDir() {
 }
 
 int main() {
-    miscDir();
+    //miscDir();
     //ebcdicDir();
+    processDir("../www.unicode.org/Public/MAPPINGS/ISO8859");
+    processDir("../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/MAC");
+    processDir("../www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/PC");
     return 0;
 }
