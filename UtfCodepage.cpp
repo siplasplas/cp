@@ -45,12 +45,32 @@ std::u32string UtfCodepage::toU32(std::string_view str) {
     }
 }
 
-std::string UtfCodepage::fromU32(u32string_view dstr) {
+std::string UtfCodepage::fromU32(u32string_view sv32) {
     UTF utf;
     switch (width) {
         case 1: {
-            //return utf.u32to8(dstr);
+            return utf.u32to8(sv32);
         }
+        case 2: {
+            std::u16string str16 = utf.u32to16(sv32);
+            if (binEndian)
+                UTF::swapIt(str16);
+            std::string_view sv8((char *) str16.c_str(), str16.size() * 2);
+            std::string str;
+            str = sv8;
+            return str;
+        }
+        case 4: {
+            std::u32string str32;
+            str32 = sv32;
+            if (binEndian)
+                UTF::reverseIt(str32);
+            std::string_view sv8((char *) str32.c_str(), str32.size() * 4);
+            std::string str;
+            str = sv8;
+            return str;
+        }
+        default:
+            return {};
     }
-    return std::string();
 }
